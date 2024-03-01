@@ -180,7 +180,7 @@ def captura_openmeteo_diaria(
     oclock_hour = exec_hour.replace(
         minute=0, second=0, microsecond=0
     )  # dejar la hora solamente
-    tendays_ago = datetime.today() + timedelta(days=-10)
+    tendays_ago = datetime.now() + timedelta(days=-10)
 
     if oclock_hour.date() < tendays_ago.date():
         start_hist = oclock_hour.date()
@@ -249,8 +249,15 @@ def captura_openmeteo_diaria(
             "Irr_Diffuse",
             "Irr_POA",
         ],
-    )
+    )   
 
+    query_rain = f"""SELECT distinct signal_readi from signals s
+                    where signal_readi_complete ~ 'WS_OM.Rain'
+                    and signal_readi_complete ~ '^({id_planta})';
+                    """
+    response = fetch_data(query_rain)
+    rain_type = list(response["signal_readi"])
+    rain_var = rain_type[0] if rain_type else "Rain"
     variables = [
         "Amb_Temp",
         "Humidity",
@@ -262,16 +269,8 @@ def captura_openmeteo_diaria(
         "Irr_H",
         "Irr_Diffuse",
         "Irr_POA",
-    ]
-
-    query_rain = f"""SELECT distinct signal_readi from signals s
-                    where signal_readi_complete ~ 'WS_OM.Rain'
-                    and signal_readi_complete ~ '^({id_planta})';
-                    """
-    response = fetch_data(query_rain)
-    rain_type = list(response["signal_readi"])
-    rain_var = "Rain" if rain_type == [] else rain_type[0]
-    variables.append(rain_var)
+        rain_var
+    ]   
     registry_df.rename(columns={"Rain_Acc": rain_var}, inplace=True)
 
     query = f"""SELECT distinct id, signal_readi_complete

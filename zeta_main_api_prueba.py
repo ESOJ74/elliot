@@ -3,7 +3,8 @@ from datetime import datetime
 import pytz
 
 from commons.SQLConnections import fetch_data
-from zeta_openmeteo_functions_diaria import captura_openmeteo_diaria, check_meteo_signals
+from zeta_openmeteo_functions_diaria import (captura_openmeteo_diaria,
+                                             check_meteo_signals)
 
 __TZ_HOST__ = "UTC"
 
