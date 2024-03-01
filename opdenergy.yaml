@@ -1,0 +1,7 @@
+bbdd_params:
+  host: "opdenergy-postgres.elliotcloud.com"
+  database: "opdenergy"
+  user: "opdenergy"
+  password: "tIF3J3tgIZRnvgHaVCD0"
+  port: 5432
+  application_name: "meteorology-openmeteo/meteorology-weatherbit"
