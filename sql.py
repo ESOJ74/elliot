@@ -1,9 +1,5 @@
 from connection import connections
 import pandas as pd
-from funciones import *
-import requests
-import pytz
-from datetime import datetime, timedelta
 import warnings
 
 def select_primary_key(table: str, conn: connections) -> str:
@@ -17,10 +13,8 @@ def select_primary_key(table: str, conn: connections) -> str:
                 and kc.ordinal_position is not null
                 order by tc.table_schema,
                         tc.table_name,
-                        kc.position_in_unique_constraint;""" 
-       
-    prymary_key=','.join(pd.read_sql(query, conn)['column_name'].values)
-    return prymary_key
+                        kc.position_in_unique_constraint;"""       
+    return  ','.join(pd.read_sql(query, conn)['column_name'].values)
      
 with warnings.catch_warnings():
     warnings.simplefilter("ignore") 

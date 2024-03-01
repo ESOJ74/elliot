@@ -1,20 +1,22 @@
-import psycopg2 as pg
-import pandas as pd
 import logging
-import yaml
-from pathlib import Path
 import warnings
+from pathlib import Path
+
+import pandas as pd
+import psycopg2 as pg
+import yaml
+
 logger = logging.getLogger()
 
 
 import platform
-from pathlib import Path
+
 
 if platform.system() == 'Windows':
     __HOME__ = Path(r'C:\Users\joseluis.cuenca\OneDrive - Bosonit\Escritorio\Elliot\pruebas')
     __TZ_HOST__ = 'Europe/Madrid'
 elif platform.system() == 'Linux':
-    __HOME__ = Path('/opt/meteorology')
+    __HOME__ = Path('/home/jose/Escritorio/Elliot/elliot')
     __TZ_HOST__ = 'UTC'
 
 def connections():
@@ -48,10 +50,9 @@ def select_primary_key(table: str, conn: connections) -> str:
                 and kc.ordinal_position is not null
                 order by tc.table_schema,
                         tc.table_name,
-                        kc.position_in_unique_constraint;""" 
-       
-    prymary_key=','.join(pd.read_sql(query, conn)['column_name'].values)
-    return prymary_key
+                        kc.position_in_unique_constraint;"""        
+    
+    return ','.join(pd.read_sql(query, conn)['column_name'].values)
 
 def insert_df_to_database(df: pd.DataFrame, table: str):
     with warnings.catch_warnings():
@@ -59,9 +60,7 @@ def insert_df_to_database(df: pd.DataFrame, table: str):
         conn=connections()
         cursor = conn.cursor()
          
-        primary_key = select_primary_key(table, conn)
-        print(primary_key)    
-         
+        primary_key = select_primary_key(table, conn)         
         df.rename(columns={'signal': 'plant_id'}, inplace=True)
         print(df)
               
@@ -69,7 +68,8 @@ def insert_df_to_database(df: pd.DataFrame, table: str):
         cols = ','.join(list(df.columns))
         values = [cursor.mogrify("(%s,%s,%s)", tup).decode('utf8') for tup in tuples]
         # Corrección aquí: formato adecuado para la cláusula DO UPDATE SET
-        updates = ["{0} = EXCLUDED.{0}".format(col) for col in df.columns if col not in primary_key]
+        updates = ["{0} = EXCLUDED.{0}".format(col)
+                   for col in df.columns if col not in primary_key]
         
         query = f"INSERT INTO {table} ({cols}) VALUES " + ",".join(values) + \
                 f" ON CONFLICT ({primary_key}) DO UPDATE SET " + ", ".join(updates)
