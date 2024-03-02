@@ -26,7 +26,6 @@ def check_meteo_signals(id_plant, lon, lat, provider):
     )
     try:
         df = fetch_data(query_asset).values[0][0]
-        print(df)
     except (
         IndexError,
         TypeError,
@@ -52,7 +51,6 @@ def check_meteo_signals(id_plant, lon, lat, provider):
                         WHERE signal_readi_complete ~ '{id_plant}.WS_{provider}';"""
     try:
         df = fetch_data(query_signals).values[0][0]
-        print(df)
     except (
         IndexError,
         TypeError,
@@ -259,8 +257,8 @@ def captura_openmeteo_diaria(
     rain_type = list(response["signal_readi"])
     rain_var = rain_type[0] if rain_type else "Rain"
     variables = [
-        "Amb_Temp",
-        "Humidity",
+        "Amb_Temp", rain_var]
+    """     "Humidity",
         "Dew",
         "Snow",
         "Atm_Press",
@@ -270,7 +268,7 @@ def captura_openmeteo_diaria(
         "Irr_Diffuse",
         "Irr_POA",
         rain_var
-    ]   
+    ]   """
     registry_df.rename(columns={"Rain_Acc": rain_var}, inplace=True)
 
     query = f"""SELECT distinct id, signal_readi_complete
@@ -296,16 +294,17 @@ def captura_openmeteo_diaria(
         if oclock_hour.date() < tendays_ago.date():
             final_hour = oclock_hour.replace(
                 hour=23, minute=55, second=0, microsecond=0
-            )
-        else:
-            start_hour = start_hour - timedelta(days=1)
+            )            
+        else:            
             final_hour = start_hour.replace(hour=23, minute=55)
-            final_hour = final_hour + timedelta(days=6)
+            final_hour = final_hour + timedelta(days=7)
 
         sub_df = df_new[(df_new["ts"] >= start_hour) & (df_new["ts"] <= final_hour)]
-
+        print(sub_df['ts'].values[0])
+        print(sub_df['ts'].values[len(sub_df)-1] )
+        print(sub_df)
         if "Rain" in var:
             sub_df = accum_to_instant(sub_df, var, freq, start_hour)
 
-        insert_df_to_database(sub_df, "tmp_diego_curtailmentprediction1hour")
+        insert_df_to_database(sub_df, "tmp_diego_rawdata_pruebasupsert")
     return sub_df

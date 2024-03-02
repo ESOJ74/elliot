@@ -11,7 +11,8 @@ __TZ_HOST__ = "UTC"
 
 
 def get_params():
-    date_str = "2024-02-29T12:00:00+00:00".split("+")[0]
+    date_str = "2024-03-01T12:11:00+00:00".split("+")[0]
+    date_str = "2024-02-13T12:10:00+00:00".split("+")[0]
     exec_date = datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%S")
     plant = "01.01.01.001"
 

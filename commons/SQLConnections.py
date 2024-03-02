@@ -54,33 +54,32 @@ def select_primary_key(table: str, conn: connections) -> str:
     
     return ','.join(pd.read_sql(query, conn)['column_name'].values)
 
-def insert_df_to_database(df: pd.DataFrame, table: str):
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore") 
-        conn=connections()
-        cursor = conn.cursor()
-         
-        primary_key = select_primary_key(table, conn)         
-        df.rename(columns={'signal': 'plant_id'}, inplace=True)
-        print(df)
-              
-        tuples = [tuple(x) for x in df.to_numpy()]
-        cols = ','.join(list(df.columns))
-        values = [cursor.mogrify("(%s,%s,%s)", tup).decode('utf8') for tup in tuples]
-        # Corrección aquí: formato adecuado para la cláusula DO UPDATE SET
-        updates = ["{0} = EXCLUDED.{0}".format(col)
-                   for col in df.columns if col not in primary_key]
+def insert_df_to_database(df: pd.DataFrame, table: str):    
+    conn=connections()
+    cursor = conn.cursor()
         
-        query = f"INSERT INTO {table} ({cols}) VALUES " + ",".join(values) + \
-                f" ON CONFLICT ({primary_key}) DO UPDATE SET " + ", ".join(updates)
-        cursor.execute(query)
-        conn.commit()    
+    primary_key = select_primary_key(table, conn)
+    print(primary_key)      
+    #df.rename(columns={'signal': 'plant_id'}, inplace=True)
+    
+            
+    tuples = [tuple(x) for x in df.to_numpy()]
+    cols = ','.join(list(df.columns))
+    mogry = '(' + ','.join(['%s'] * len(df.columns)) + ')'   
+    values = [cursor.mogrify(mogry, tup).decode('utf8') for tup in tuples]    
+    updates = ["{0} = EXCLUDED.{0}".format(col)
+                for col in df.columns if col not in primary_key]
+    
+    query = f"INSERT INTO {table} ({cols}) VALUES " + ",".join(values) + \
+            f" ON CONFLICT ({primary_key}) DO UPDATE SET " + ", ".join(updates)
+    
+    cursor.execute(query)
+    conn.commit()    
 
-        table ='tmp_diego_curtailmentprediction1hour'
-        query = f"SELECT * FROM {table} order by ts desc limit 5"
-        df = pd.read_sql(query, conn)
-        print('----------------------------------')
-        print(df)   
+    table ='public.tmp_diego_rawdata_pruebasupsert'
+    query = f"SELECT * FROM {table} order by ts desc limit 5"
+    df = pd.read_sql(query, conn)
+          
 
 
 def insert_data(query: str) -> None:   
