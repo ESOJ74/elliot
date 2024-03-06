@@ -1,0 +1,9 @@
+psycopg2-binary
+sqlalchemy==1.4.39
+pandas==2.0.3
+numpy==1.25.0
+requests==2.31.0
+Flask==2.2.5
+fastapi==0.110.0
+uvicorn==0.27.1
+pyyaml==6.0.1

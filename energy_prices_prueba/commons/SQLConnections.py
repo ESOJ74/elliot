@@ -1,7 +1,7 @@
 import warnings
 import pandas as pd
 import psycopg2 as pg
-import psycopg2.extras
+from psycopg2 import extras
 
 
 def connections():   
@@ -40,25 +40,6 @@ def select_primary_key(table: str) -> str:
     cursor.close()
     return ','.join(pk[0] for pk in primary_keys)
 
-def insert_df_to_database2(df: pd.DataFrame, table: str):
-    conn=connections()   
-    cursor = conn.cursor()
-    primary_key = select_primary_key(table)
-    tuples = [tuple(x) for x in df.to_numpy()]
-    cols = ','.join(list(df.columns))
-    placeholders = '(' + ','.join(['%s'] * len(df.columns)) + ')'
-    values = [cursor.mogrify(placeholders, tup).decode('utf8') for tup in tuples]
-    updates = [f"{col} = EXCLUDED.{col}" for col in df.columns if col not in primary_key]
-
-    query = f"INSERT INTO {table} ({cols}) VALUES " + ",".join(values) + \
-            f" ON CONFLICT ({primary_key}) DO UPDATE SET " + ", ".join(updates)
-    
-    
-    cursor.execute(query)
-    conn.commit()
-    cursor.close()
-
-from psycopg2 import extras
 
 def insert_df_to_database(df: pd.DataFrame, table: str):
     conn = connections()   
@@ -75,26 +56,8 @@ def insert_df_to_database(df: pd.DataFrame, table: str):
     extras.execute_values(cursor, query, tuples, template=None, page_size=100)
     conn.commit()
     cursor.close()
-    conn.close()
+    conn.close()  
 
-
-
-    
-
-  
-          
-
-
-def insert_data(query: str) -> None:   
-    conn=connections()
-    cursor = conn.cursor()
-    try:
-        cursor.execute(query)
-        conn.commit()        
-    except Exception as e:
-        raise e  
-    finally:         
-        cursor.close()
 
 def fetch_data(query: str) -> pd.DataFrame:
     with warnings.catch_warnings():
@@ -102,10 +65,15 @@ def fetch_data(query: str) -> pd.DataFrame:
         conn=connections()
         cursor = conn.cursor()
         try:
-            df = pd.read_sql(query, conn) 
-                
+            df = pd.read_sql(query, conn)                
         except Exception as e:
             raise e
         finally:         
             cursor.close()
         return df
+
+
+
+
+
+

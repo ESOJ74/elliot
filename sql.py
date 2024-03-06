@@ -53,7 +53,7 @@ def comprobar(modo):
     query = f"SELECT * FROM {table} where signal='147832' order by ts desc limit 50"
 
     query = f"""SELECT * FROM tmp_diego_rawdata_pruebasupsert order by ts {modo},signal limit 100;"""
-    df = pd.read_sql(query, conn)
+    """df = pd.read_sql(query, conn)
     print(df)
     start_date = df['ts'].values[0]
     start_date = str(start_date).split('T')
@@ -64,7 +64,7 @@ def comprobar(modo):
     end_date = str(end_date).split('T')
     end_date = ' '.join(end_date).split('.')
     end_date = datetime.strptime(f'{end_date[0]}+00:00', '%Y-%m-%d %H:%M:%S%z')
-    print(end_date)
+    print(end_date)"""
     query = f"select FROM public.raw_data " \
             f"WHERE ts > '2024-01-17'  limit 1000"
     
@@ -74,9 +74,14 @@ def comprobar(modo):
                 and a.ts=b.ts
                 order by a.ts asc
                 LIMIT 100;"""
+    
+    query = """SELECT * FROM tmp_diego_rawdata_pruebasupsert order by ts,signal  limit 3158"""
+    query2 = """SELECT * FROM public.raw_data where ts > '2024-01-18' and signal > '147831' order by ts,signal  limit 10"""
     print(query)
-    df2 = pd.read_sql(query, conn)
-    print(df2)
+    df = pd.read_sql(query, conn)
+    #df2 = pd.read_sql(query2, conn)
+    print(df)
+    #print(df2)
     #merged_df = df.merge(df2, indicator=True, how='outer')
     #print(merged_df[merged_df['_merge']!='both'])
 

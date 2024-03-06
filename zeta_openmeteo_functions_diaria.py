@@ -6,13 +6,8 @@ import pytz
 import requests
 
 from commons.SQLConnections import fetch_data, insert_df_to_database
-from zeta_func_aux import (
-    accum_to_instant,
-    constant_fiveminutal,
-    constant_tenminutal,
-    fiveminutal,
-    tenminutal,
-)
+from zeta_func_aux import (accum_to_instant, constant_fiveminutal,
+                           constant_tenminutal, fiveminutal, tenminutal)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
@@ -171,140 +166,87 @@ def check_meteo_signals(id_plant, lon, lat, provider):
                                   False, '{v[3]}', '{v[4]}', '{v[5]}', '{v[6]}');"""
             # insert_data(insert_signal_query, f"DAG-{provider}-checkmeteosignals")
 
+
+def build_data_url(lat, lon, oclock_hour, tendays_ago):    
+    if oclock_hour.date() >= tendays_ago.date():
+        return f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&past_days=10&hourly=temperature_2m,relativehumidity_2m,dewpoint_2m,precipitation,snowfall,pressure_msl,windspeed_10m,winddirection_10m,direct_radiation,diffuse_radiation,direct_normal_irradiance&windspeed_unit=ms&timezone=auto"
+    start_hist = (oclock_hour + timedelta(days=-1)).date()
+    end_hist = (oclock_hour + timedelta(days=1)).date()
+    return f"https://archive-api.open-meteo.com/v1/archive?latitude={lat}&longitude={lon}&start_date={start_hist}&end_date={end_hist}&hourly=temperature_2m,relativehumidity_2m,dewpoint_2m,precipitation,snowfall,pressure_msl,windspeed_10m,winddirection_10m,direct_radiation,diffuse_radiation,direct_normal_irradiance&windspeed_unit=ms&timezone=auto"
+
+def localize_timestamps(timestamps_str, timezone):
+    tz = pytz.timezone(timezone)
+    timestamps = [datetime.strptime(time, "%Y-%m-%dT%H:%M") for time in timestamps_str]
+    return [tz.localize(time) for time in timestamps]
+
 def captura_openmeteo_diaria(
-    lat: float, lon: float, exec_hour: datetime, freq: str, id_planta: str
-):
+        lat: float, lon: float, exec_hour: datetime, freq: str, id_planta: str):
 
     oclock_hour = exec_hour.replace(
         minute=0, second=0, microsecond=0
     )  # dejar la hora solamente
     tendays_ago = datetime.now() + timedelta(days=-10)
 
-    if oclock_hour.date() < tendays_ago.date():
-        start_hist = oclock_hour.date()
-        end_hist = oclock_hour + timedelta(days=1)
-        end_hist = end_hist.date()
-        data_url = (
-            f"https://archive-api.open-meteo.com/v1/archive?latitude={lat}&longitude={lon}&"
-            f"start_date={start_hist}&end_date={end_hist}&hourly=temperature_2m,"
-            "relativehumidity_2m,dewpoint_2m,precipitation,snowfall,pressure_msl,windspeed_10m,"
-            "winddirection_10m,direct_radiation,diffuse_radiation,direct_normal_irradiance&windspeed_unit=ms"
-            "&timezone=auto"
-        )
-    else:
-        data_url = (
-            f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&past_days=10&hourly=temperature_2m,"
-            "relativehumidity_2m,dewpoint_2m,precipitation,snowfall,pressure_msl,windspeed_10m,winddirection_10m,"
-            "direct_radiation,diffuse_radiation,direct_normal_irradiance&windspeed_unit=ms&timezone=auto"
-        )
-
+    data_url = build_data_url(lat, lon, oclock_hour, tendays_ago)
     res = requests.get(data_url).json()
-
-    timestamps_str = res["hourly"]["time"]
-    temperature = res["hourly"]["temperature_2m"]
-    humidity = res["hourly"]["relativehumidity_2m"]
-    dew = res["hourly"]["dewpoint_2m"]
-    precip = res["hourly"]["precipitation"]
     snow = [i / 100 for i in res["hourly"]["snowfall"]]  # conversion de cm a m
     press = [j * 100 for j in res["hourly"]["pressure_msl"]]  # conversion de hPa a Pa
-    windspeed = res["hourly"]["windspeed_10m"]
-    winddir = res["hourly"]["winddirection_10m"]
-    direct = res["hourly"]["direct_radiation"]
-    diffuse = res["hourly"]["diffuse_radiation"]
-    dni = res["hourly"]["direct_normal_irradiance"]
-    tz = pytz.timezone(res["timezone"])
-    timestamps = [datetime.strptime(time, "%Y-%m-%dT%H:%M") for time in timestamps_str]
-    timestamps_loc = [tz.localize(time) for time in timestamps]
-    zipped = list(
-        zip(
-            timestamps_loc,
-            temperature,
-            humidity,
-            dew,
-            precip,
-            snow,
-            press,
-            windspeed,
-            winddir,
-            direct,
-            diffuse,
-            dni,
-        )
-    )
-    registry_df = pd.DataFrame(
-        data=zipped,
-        columns=[
-            "datetime",
-            "Amb_Temp",
-            "Humidity",
-            "Dew",
-            "Rain_Acc",
-            "Snow",
-            "Atm_Press",
-            "Wind_Sp",
-            "Wind_Dir",
-            "Irr_H",
-            "Irr_Diffuse",
-            "Irr_POA",
-        ],
-    )   
+    timestamps_loc = localize_timestamps(res["hourly"]["time"], res["timezone"])
+     
+    zipped = list(zip(timestamps_loc, res["hourly"]["temperature_2m"],
+                      res["hourly"]["relativehumidity_2m"], res["hourly"]["dewpoint_2m"],
+                      res["hourly"]["precipitation"], snow, press,
+                      res["hourly"]["windspeed_10m"], res["hourly"]["winddirection_10m"],
+                      res["hourly"]["direct_radiation"],
+                      res["hourly"]["diffuse_radiation"],
+                      res["hourly"]["direct_normal_irradiance"]))
+    
+    registry_df = pd.DataFrame(data=zipped, columns=["datetime", "Amb_Temp", "Humidity",
+                                                     "Dew", "Rain_Acc", "Snow", "Atm_Press",
+                                                     "Wind_Sp", "Wind_Dir", "Irr_H", "Irr_Diffuse",
+                                                     "Irr_POA"])
 
     query_rain = f"""SELECT distinct signal_readi from signals s
                     where signal_readi_complete ~ 'WS_OM.Rain'
                     and signal_readi_complete ~ '^({id_planta})';
                     """
     response = fetch_data(query_rain)
-    rain_type = list(response["signal_readi"])
-    rain_var = rain_type[0] if rain_type else "Rain"
-    variables = [
-        "Amb_Temp", rain_var]
-    """     "Humidity",
-        "Dew",
-        "Snow",
-        "Atm_Press",
-        "Wind_Sp",
-        "Wind_Dir",
-        "Irr_H",
-        "Irr_Diffuse",
-        "Irr_POA",
-        rain_var
-    ]   """
-    registry_df.rename(columns={"Rain_Acc": rain_var}, inplace=True)
-
+    rain_type = list(response['signal_readi'])
+    rain_var = rain_type[0] if rain_type else "Rain"    
+    registry_df.rename(columns={'Rain_Acc': rain_var}, inplace=True)
+      
     query = f"""SELECT distinct id, signal_readi_complete
                 FROM public.signals 
-                WHERE signal_readi_complete ~ '^({id_planta}.WS_OM)';"""
-    df_id_data = fetch_data(query)
-
-    for var in variables:
+                WHERE signal_readi_complete ~ '^({id_planta}.WS_OM)';"""  
+    df_id_data = fetch_data(query) 
+    
+    variables = ['Amb_Temp', 'Humidity']#, 'Dew', 'Snow', 'Atm_Press', 'Wind_Sp',
+                 #'Wind_Dir', 'Irr_H', 'Irr_Diffuse', 'Irr_POA', rain_var]
+    
+    freq_funcs = {
+                "5M": (constant_fiveminutal if rain_var == "Rain" else fiveminutal),
+                "10M": (constant_tenminutal if rain_var == "Rain" else tenminutal)
+            }
+    
+    for var in variables:            
         signal_id = df_id_data[
             df_id_data["signal_readi_complete"] == f"{id_planta}.WS_OM.{var}"
-        ]["id"].iloc[0]
-        df = registry_df[["datetime", var]]
-        df.columns = ["ts", "value"]
-
-        if freq == "5M":
-            df_new = constant_fiveminutal(df) if var == "Rain" else fiveminutal(df)
-        elif freq == "10M":
-            df_new = constant_tenminutal(df) if var == "Rain" else tenminutal(df)
-
+        ]["id"].iloc[0]             
+        df = registry_df[['datetime', var]]
+        df.columns = ['ts', 'value']
+        df_new = freq_funcs[freq](df)
         df_new["signal"] = signal_id
-
-        start_hour = oclock_hour.replace(hour=0, minute=5)
-        if oclock_hour.date() < tendays_ago.date():
-            final_hour = oclock_hour.replace(
-                hour=23, minute=55, second=0, microsecond=0
-            )            
-        else:            
-            final_hour = start_hour.replace(hour=23, minute=55)
-            final_hour = final_hour + timedelta(days=7)
-
+                
+        start_hour = oclock_hour.replace(hour=0, minute=5)        
+        final_hour = start_hour.replace(hour=0, minute=0)
+        final_hour += timedelta(days=1)
+        start_hour += timedelta(days=-1)
+        if oclock_hour.date() >= tendays_ago.date():
+            final_hour += timedelta(days=7)
+        
         sub_df = df_new[(df_new["ts"] >= start_hour) & (df_new["ts"] <= final_hour)]
-        print(sub_df['ts'].values[0])
-        print(sub_df['ts'].values[len(sub_df)-1] )
-        print(sub_df)
-        if "Rain" in var:
+        if var == rain_var:
             sub_df = accum_to_instant(sub_df, var, freq, start_hour)
-
-        insert_df_to_database(sub_df, "tmp_diego_rawdata_pruebasupsert")
+        print(sub_df)
+        insert_df_to_database(sub_df, 'tmp_diego_rawdata_pruebasupsert')
     return sub_df
