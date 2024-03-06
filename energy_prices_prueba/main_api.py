@@ -55,5 +55,4 @@ end_date_str = '2024-01-31T00:01:00+00:00'
 princ_mes = start_date_str.split('T')[0]
 ts_comienzo = datetime.strptime(princ_mes, "%Y-%m-%d")
 fin_mes = end_date_str.split('T')[0]
-
 process_igx(princ_mes, fin_mes, ts_comienzo)

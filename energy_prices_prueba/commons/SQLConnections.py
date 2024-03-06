@@ -2,16 +2,20 @@ import warnings
 import pandas as pd
 import psycopg2 as pg
 from psycopg2 import extras
+import yaml
 
 
 def connections():   
+    with open('energy_prices_prueba/energyprices-opdenergy.yaml', 'r') as handler:
+        config = yaml.safe_load(handler)
+    
     params_dic = {
-        "host"      : "opdenergy-postgres.elliotcloud.com",
-        "database"  : "opdenergy",
-        "user"      : "opdenergy",
-        "password"  : "tIF3J3tgIZRnvgHaVCD0",
-        "port"      : 5432,
-        "application_name": "meteorology-openmeteo/meteorology-weatherbit"
+        "host"      : config['bbdd_params']['host'],
+        "database"  : config['bbdd_params']['database'],
+        "user"      : config['bbdd_params']['user'],
+        "password"  : config['bbdd_params']['password'],
+        "port"      : config['bbdd_params']['port'],
+        "application_name": config['bbdd_params']['application_name']
     }
     """ Connect to the PostgreSQL database server """
     conn = None

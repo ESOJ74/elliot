@@ -95,10 +95,10 @@ def process_igx(princ_mes, fin_mes, ts_comienzo):
         fin_nulls_loc = tz.localize(fin_nulls, is_dst=None)
         df_nulls = null_register(comienzo_nulls_loc, fin_nulls_loc, id_igx)
 
-        df_raw = df_raw.rename(columns={'calc_sig_id': 'signal'})        
-        insert_df_to_database(df_raw, 'tmp_diego_rawdata_pruebasupsert') #'energyprice_raw_data'
+        df_raw = df_raw.rename(columns={'calc_sig_id': 'signal'})     
+        #insert_df_to_database(df_raw, 'tmp_diego_rawdata_pruebasupsert') #'energyprice_raw_data'
         price_minutal = price_minutal.rename(columns={'calc_sig_id': 'signal'})      
-        insert_df_to_database(price_minutal, 'tmp_diego_rawdata_pruebasupsert')#'energyprice_calculated_signals_data'                   
+        #insert_df_to_database(price_minutal, 'tmp_diego_rawdata_pruebasupsert')#'energyprice_calculated_signals_data'                   
         df_nulls = df_nulls.rename(columns={'calc_sig_id': 'signal'})        
-        insert_df_to_database(df_nulls, 'tmp_diego_rawdata_pruebasupsert') #'energyprice_calculated_signals_data'
+        #insert_df_to_database(df_nulls, 'tmp_diego_rawdata_pruebasupsert') #'energyprice_calculated_signals_data'
         

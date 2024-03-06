@@ -70,8 +70,8 @@ def process_omie(start_date, end_date):
     zonah = result["timezone"][0]
     df_raw = get_raw_omie(end_date, calc_sig_id, zonah)
     df_raw = df_raw.rename(columns={'calc_sig_id': 'signal'})    
-    insert_df_to_database(df_raw, 'tmp_diego_rawdata_pruebasupsert') #'energyprice_raw_data'
+    #insert_df_to_database(df_raw, 'tmp_diego_rawdata_pruebasupsert') #'energyprice_raw_data'
 
     price_minutal = price_register(df_raw, zonah, calc_sig_id)
     price_minutal = price_minutal.rename(columns={'calc_sig_id': 'signal'})
-    insert_df_to_database(price_minutal, 'tmp_diego_rawdata_pruebasupsert') #'energyprice_calculated_signals_data'
+    #insert_df_to_database(price_minutal, 'tmp_diego_rawdata_pruebasupsert') #'energyprice_calculated_signals_data'
