@@ -12,16 +12,11 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger()
 
 
-def metadatos_plantas():
-    query_datos = """SELECT calc_sig_id, region, coordinado_code, central_code, timezone
-                     FROM public.energyprice_calculated_signals WHERE country='Chile';"""
-    result = fetch_data(query_datos).set_index('calc_sig_id').to_dict('index')
-
-    coordcode_data = {k: v['coordinado_code'] for k, v in result.items()}
-    centralcode_data = {k: v['central_code'] for k, v in result.items()}
-    time_data = {k: v['timezone'] for k, v in result.items()}
-
-    return coordcode_data, centralcode_data, time_data
+def metadatos_plantas(planta):   
+    query_datos = f"""SELECT central_code,coordinado_code, calc_sig_id, timezone
+                     FROM public.energyprice_calculated_signals WHERE central_code='{planta}';"""
+    r = fetch_data(query_datos)         
+    return r['coordinado_code'].iloc[0], r['calc_sig_id'].iloc[0], r['timezone'].iloc[0]
 
 
 def get_raw_igx(princ_mes, fin_mes, id_igx, coord_code, planta, zonah):
@@ -73,32 +68,24 @@ def null_register(comienzo, final, calc_sig_id):
     return df
 
 
-def process_igx(princ_mes, fin_mes, ts_comienzo):
+def process_igx(princ_mes, fin_mes, ts_comienzo, planta):
 
-    coordcode_data, centralcode_data, time_data = metadatos_plantas()    
-    comienzo_nulls = ts_comienzo.replace(month=1 if ts_comienzo.month == 12 else ts_comienzo.month + 1,
-                                         year=ts_comienzo.year + 1 if ts_comienzo.month == 12 else ts_comienzo.year
-                                         )
+    coord_code, id_igx, timezone = metadatos_plantas(planta)  
+    print(planta, coord_code, id_igx, timezone)
+    df_raw = get_raw_igx(princ_mes, fin_mes, id_igx, coord_code, planta, timezone)
+    price_minutal = price_register(df_raw, timezone, id_igx)    
     
-    fin_nulls = ts_comienzo + relativedelta(months=3)
-    fin_nulls = fin_nulls + timedelta(minutes=-5)
+    comienzo_nulls = ts_comienzo + relativedelta(months=1)     
+    fin_nulls = ts_comienzo + relativedelta(months=3, minutes=-5)  
+    tz = pytz.timezone(timezone) 
+    comienzo_nulls_loc = tz.localize(comienzo_nulls, is_dst=None)
+    fin_nulls_loc = tz.localize(fin_nulls, is_dst=None)
+    df_nulls = null_register(comienzo_nulls_loc, fin_nulls_loc, id_igx)
 
-    for id_igx in coordcode_data.keys():
-        timezone = time_data.get(id_igx)
-        tz = pytz.timezone(timezone)
-        coord_code = coordcode_data.get(id_igx)
-        planta = centralcode_data.get(id_igx)
-
-        df_raw = get_raw_igx(princ_mes, fin_mes, id_igx, coord_code, planta, timezone)
-        price_minutal = price_register(df_raw, timezone, id_igx) 
-        comienzo_nulls_loc = tz.localize(comienzo_nulls, is_dst=None)
-        fin_nulls_loc = tz.localize(fin_nulls, is_dst=None)
-        df_nulls = null_register(comienzo_nulls_loc, fin_nulls_loc, id_igx)
-
-        df_raw = df_raw.rename(columns={'calc_sig_id': 'signal'})     
-        #insert_df_to_database(df_raw, 'tmp_diego_rawdata_pruebasupsert') #'energyprice_raw_data'
-        price_minutal = price_minutal.rename(columns={'calc_sig_id': 'signal'})      
-        #insert_df_to_database(price_minutal, 'tmp_diego_rawdata_pruebasupsert')#'energyprice_calculated_signals_data'                   
-        df_nulls = df_nulls.rename(columns={'calc_sig_id': 'signal'})        
-        #insert_df_to_database(df_nulls, 'tmp_diego_rawdata_pruebasupsert') #'energyprice_calculated_signals_data'
-        
+    df_raw = df_raw.rename(columns={'calc_sig_id': 'signal'})  
+    print(df_raw)   
+    #insert_df_to_database(df_raw, 'tmp_diego_rawdata_pruebasupsert') #'energyprice_raw_data'
+    price_minutal = price_minutal.rename(columns={'calc_sig_id': 'signal'})      
+    #insert_df_to_database(price_minutal, 'tmp_diego_rawdata_pruebasupsert')#'energyprice_calculated_signals_data'                   
+    df_nulls = df_nulls.rename(columns={'calc_sig_id': 'signal'})        
+    #insert_df_to_database(df_nulls, 'tmp_diego_rawdata_pruebasupsert') #'energyprice_calculated_signals_data'

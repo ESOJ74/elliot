@@ -48,11 +48,13 @@ async def igxprices(request: Request) -> str:
 
     return "ok"
 
-start_date_str = '2024-01-01T00:01:00+00:00'
+start_date_str = '2023-12-01T00:01:00+00:00'
 end_date_str = '2024-01-31T00:01:00+00:00'
 #process_omie(start_date_str, end_date_str)
 
 princ_mes = start_date_str.split('T')[0]
 ts_comienzo = datetime.strptime(princ_mes, "%Y-%m-%d")
 fin_mes = end_date_str.split('T')[0]
-process_igx(princ_mes, fin_mes, ts_comienzo)
+plantas = ['SOL_DE_LOS_ANDES', 'LA_ESTRELLA', 'LLAY_LLAY', 'PMGD_LINGUE']
+for planta in plantas:
+    process_igx(princ_mes, fin_mes, ts_comienzo, planta)
