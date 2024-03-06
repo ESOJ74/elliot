@@ -8,20 +8,9 @@ import yaml
 
 def connections():   
     with open('opdenergy.yaml', 'r') as handler:
-        config = yaml.safe_load(handler)
-    
-    params_dic = {
-        "host"      : config['bbdd_params']['host'],
-        "database"  : config['bbdd_params']['database'],
-        "user"      : config['bbdd_params']['user'],
-        "password"  : config['bbdd_params']['password'],
-        "port"      : config['bbdd_params']['port'],
-        "application_name": config['bbdd_params']['application_name']
-    }
-    """ Connect to the PostgreSQL database server """
-    conn = None
+        config = yaml.safe_load(handler)   
     try:
-        conn = pg.connect(**params_dic)
+        conn = pg.connect(**config['bbdd_params'])
     except (Exception, pg.DatabaseError) as e:
         print(e)    
     return conn
