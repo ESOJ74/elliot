@@ -1,7 +1,8 @@
 import warnings
+
 import pandas as pd
 import psycopg2 as pg
-import psycopg2.extras
+from psycopg2 import extras
 
 
 def connections():   
@@ -40,6 +41,7 @@ def select_primary_key(table: str) -> str:
     cursor.close()
     return ','.join(pk[0] for pk in primary_keys)
 
+
 def insert_df_to_database2(df: pd.DataFrame, table: str):
     conn=connections()   
     cursor = conn.cursor()
@@ -52,13 +54,10 @@ def insert_df_to_database2(df: pd.DataFrame, table: str):
 
     query = f"INSERT INTO {table} ({cols}) VALUES " + ",".join(values) + \
             f" ON CONFLICT ({primary_key}) DO UPDATE SET " + ", ".join(updates)
-    
-    
     cursor.execute(query)
     conn.commit()
     cursor.close()
 
-from psycopg2 import extras
 
 def insert_df_to_database(df: pd.DataFrame, table: str):
     conn = connections()   
